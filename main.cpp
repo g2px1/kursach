@@ -1,81 +1,68 @@
 #include <iostream>
-#include <array>
+#include <vector>
 
 using namespace std;
 
 class segmentTree
 {
 public:
-    int length;
+    unsigned long length;
     segmentTree(){}
-    segmentTree(int *arr, int leng)
+    segmentTree(vector<int> arr)
     {
-        length = leng;
-        array = new int[length];
-        for(int i = 0; i < length; ++i)
-            array[i] = arr[i];
-        buildSumTree(array[0], 0, length, arr);
+        array = arr;
+        sumed = array;
+        length = arr.size();
+        buildSumTree(sumed[0], 0, length, sumed);
     }
-    ~segmentTree(){ for(int i = 0; i < length; ++i) { array[i] = NULL; } delete [] array; }
+    ~segmentTree(){}
     void print();
-    int64_t getSummary(int v, int L, int R, int l, int r) // L, R - обрабатываемые функцией границы, l, r - границы запроса
-    {
-        if (r <= L || R <= l) return 0; // Первое условие
-        if (l <= L && R <= r) return array[v]; // Второе условие
-        int M = (L + R) / 2;
-        int64_t first_child = getSummary(2 * v + 1, L, M, l, r);
-        int64_t second_child = getSummary(2 * v + 2, M, R, l, r);
-        return first_child + second_child;
-    }
+    void printSum();
 private:
-    int *array;
+    vector<int> array;
+    vector<int> sumed;
 protected:
-    void buildSumTree(int v, int L, int R, int *a)
+    void buildSumTree(long int v, unsigned long int L, unsigned long R, vector<int> a)
     {
         if (L == R - 1) // Условие выхода
         {
-            if (L < length) // Поскольку мы объявляем большую размерность, необходимо следить за границей
+            if (L < R) // Поскольку мы объявляем большую размерность, необходимо следить за границей
             {
-                array[v] = a[L];
+                sumed[v] = a[L];
             }
             return; // Присвоили, возвращаемся
         }
-        int M = (L + R) / 2; // Выбираем середину отрезка [L..R]
+        unsigned long int M = (L + R) / 2; // Выбираем середину отрезка [L..R]
         buildSumTree(2 * v + 1, L, M, a); // Запускаем сумму для левого потомка
         buildSumTree(2 * v + 2, M, R, a); // И для правого
-        array[v] = array[2 * v + 1] + array[2 * v + 2]; // Обновляем текущую вершину
+        sumed[v] = sumed[2 * v + 1] + sumed[2 * v + 2]; // Обновляем текущую вершину
     }
     
-    int getHead(int *arr)
-    {
-        if(length != 0)
-        {
-            return arr[0];
-        }
-        return NULL;
-    }
-    
-    int getTail(int *arr)
-    {
-        if(length != 0)
-        {
-            return arr[length-1];
-        }
-        return NULL;
-    }
+
 };
 
 void segmentTree::print()
 {
-    for(int i = 0; i < length; i++)
-    {
-        cout << segmentTree::array[i] << endl;
-    }
+    
+   for(vector<int>::iterator iter = segmentTree::array.begin(); iter != segmentTree::array.end(); ++iter)
+   {
+       std::cout << *iter << std::endl;
+   }
+}
+
+void segmentTree::printSum()
+{
+    for(vector<int>::iterator iter = sumed.begin(); iter != sumed.end(); ++iter)
+   {
+       std::cout << *iter << std::endl;
+   }
 }
 
 int main()
 {
-    int arr[8] = {2,3,7,6,5,4,2,8};
-    segmentTree a(arr, 8);
+    vector<int> arr = {1,2,3,4};
+    segmentTree a(arr);
 //    a.print();
+    cout << endl;
+    a.printSum();
 }
