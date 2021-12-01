@@ -3,178 +3,142 @@
 #define clg(N) \
 cout << N << endl;
 
-
 using namespace std;
 
+template <typename T>
 class segmentTree
 {
 public:
-    unsigned long length;
-    segmentTree(){}
-    segmentTree(vector<int> arr)
+    int length;
+    segmentTree(vector<T> vec)
     {
-        array = arr;
-        sumed = array;
-        length = arr.size();
-        buildSumTree(0, 0, length, sumed);
-        sumed.pop_back();
-        for(int i = 0; i < arr.size()*3; i++)
+        length = vec.size();
+        originalTree = vec;
+        buildedTree = vec;
+        convertToEmptyVector();
+        convertToEmptyVectorByIndex();
+    }
+    void buildTree(int currentIndex, int leftQueryBorder, int rightQueryBorder)
+    {
+        if(leftQueryBorder == rightQueryBorder - 1)
         {
-            modifications.push_back(0);
+            if(leftQueryBorder < rightQueryBorder)
+                buildedTree[currentIndex] = originalTree[leftQueryBorder];
+            return;
+        }
+        else
+        {
+            buildTree(2 * currentIndex + 1, leftQueryBorder, (rightQueryBorder + leftQueryBorder) / 2);
+            buildTree(2 * currentIndex + 2, (rightQueryBorder + leftQueryBorder) / 2, rightQueryBorder);
+            cout << "Value = ";
+            clg(buildedTree[2 * currentIndex + 1] + buildedTree[2 * currentIndex + 2]);
+            buildedTree[currentIndex] = buildedTree[2 * currentIndex + 1] + buildedTree[2 * currentIndex + 2];
         }
     }
-    ~segmentTree(){}
-    void print();
-    void printSum();
-    void buildSumTree(long int v, unsigned long int L, unsigned long R, vector<int> a)
+    T getSum(int currentIndex, int leftQueryBorder, int rightQueryBorder)
     {
-
-        if (L == R - 1) // Условие выхода
-        {
-            if (L < R) // Поскольку мы объявляем большую размерность, необходимо следить за границей
-            {
-                sumed[v] = a[L];
-            }
-            return; // Присвоили, возвращаемся
-        }
-        unsigned long int M = (L + R) / 2; // Выбираем середину отрезка [L..R]
-        buildSumTree(2 * v + 1, L, M, a); // Запускаем сумму для левого потомка
-        buildSumTree(2 * v + 2, M, R, a); // И для правого
-        cout << "value = ";
-        clg(sumed[2 * v + 1] + sumed[2 * v + 2]);
-        cout << "Get by: " << sumed[2 * v + 1] << ", " << sumed[2 * v + 2] << endl << endl;
-        sumed[v] = sumed[2 * v + 1] + sumed[2 * v + 2]; // Обновляем текущую вершину
+        push(currentIndex, leftQueryBorder, rightQueryBorder);
+        if((buildedTree.size()-1) <= leftQueryBorder || rightQueryBorder <= 0) return 0;
+        if(0 <= leftQueryBorder && rightQueryBorder <= buildedTree.size()-1) return buildedTree[currentIndex];
+        int half = (leftQueryBorder + rightQueryBorder) / 2;
+        T firstChild = getSum(2*currentIndex+1, leftQueryBorder, half);
+        T secondChild = getSum(2*currentIndex+2, half, rightQueryBorder);
+        return firstChild + secondChild;
     }
-//    void change(int left, int right, vector<int> ch)
-//    {
-//        if((left > array.size()-1 || right > array.size()-1) && left > 0 && right > 0 && ch.size() > 0)
-//        {
-//            int count = 0;
-//            for(vector<int>::iterator it = array.begin(); *it != array[right+1]; it++)
-//            {
-//                *it = ch[count];
-//                count++;
-//            }
-//        }
-//        else
-//        {
-//            return;
-//        }
-//    }
-
-//    int getSum(int l, int r, int v, int left, int right) {
-    int getSum( int v, int left, int right) {
-        //вариант 1
-        if (0 <= left && right <= sumed.size()) {
-            return sumed[v];
-        }
-
-        //вариант 2
-        if (right < 0 || sumed.size() < left) {
+    T setWithRecount(int currentIndex, int leftQueryBorder, int rightQueryBorder, int indexOfElementToChange, T value)
+    {
+        if(leftQueryBorder == rightQueryBorder - 1)
+        {
+            buildedTree[currentIndex] = value;
+            originalTree[currentIndex] = value;
             return 0;
         }
-
-        //вариант 3
-        push(v, left, right);    //Проталкиваем модификации перед каждым разделением запроса!
-        int tm = (left + right) / 2;
-//        return getSum(l, r, v * 2,     left,     tm)
-//             + getSum(l, r, v * 2 + 1, tm + 1, right);
-        return getSum(v * 2,     left,     tm)
-             + getSum(v * 2 + 1, tm + 1, right);
+        int half = (leftQueryBorder + rightQueryBorder) / 2;
+        if(indexOfElementToChange < half) setWithRecount(2*currentIndex+1, leftQueryBorder, half, indexOfElementToChange, value);
+        else setWithRecount(2*currentIndex+2, half, rightQueryBorder, indexOfElementToChange, value);
+        buildedTree[currentIndex] = buildedTree[2*currentIndex+1] + buildedTree[2*currentIndex+2];
+        return 0;
     }
-//    void assign(int l, int r, int val, int v, int left, int right) {
-    void assign(int val, int v, int left, int right) {
-        //вариант 1
-        if (0 <= left && right <= sumed.size()) {
-            sumed[v] = val * (right - left + 1);
-            modifications[v] = val;   //сохраняем несогласованность
-            return;
-        }
-
-        //вариант 2
-        if (right < 0 || sumed.size() < left)
-        {
-            return;
-        }
-
-        //вариант 3
-        push(v, left, right);    //Проталкиваем модификации перед каждым разделением запроса!
-        int tm = (left + right) / 2;
-//        assign(0, sumed.size(), val, v * 2,     left,     tm);
-//        assign(0, sumed.size(), val, v * 2 + 1, tm + 1, right);
-        assign(val, v * 2,     left,     tm);
-        assign(val, v * 2 + 1, tm + 1, right);
-        sumed[v] = sumed[v * 2] + sumed[v * 2 + 1];
-    }
-
-private:
-    vector<int> array;
-    vector<int> sumed;
-    vector<int> modifications;
-//    void push(int v, int tl, int tr) {
-//        if (modifications[v] != 0 && v * 2 + 1 < 400004) {    //если есть что и куда проталкивать
-//
-//            //проталкиваем несогласованность
-//            modifications[v * 2] = modifications[v * 2 + 1] = modifications[v];
-//            modifications[v] = 0;
-//
-//            //и пересчитываем значения
-//            int tm = (tl + tr) / 2;
-//            sumed[v * 2] = (tm - tl + 1) * modifications[v * 2];
-//            sumed[v * 2 + 1] = (tr - tm) * modifications[v * 2 + 1];
+//    T push(int currentIndex,  int leftQueryBorder, int rightQueryBorder)
+//    {
+//        if(leftQueryBorder != rightQueryBorder - 1)
+//        {
+//            changes[2*currentIndex+1] = changes[currentIndex];
+//            changes[2*currentIndex+2] = changes[currentIndex];
 //        }
+//        buildedTree[currentIndex] = changes[currentIndex] * (rightQueryBorder-leftQueryBorder);
+//        changes[currentIndex] = 0;
+//        return 0;
 //    }
-    void push(int v, int left, int right) {
-        if((left > array.size()-1 || right > array.size()-1) && left > 0 && right > 0)
+    void push(int currentIndex, int leftQuery, int rightQuery)
+    {
+        if(2 * currentIndex + 1 < changes.size() && changes[currentIndex] != 0)
         {
-            if (modifications[v] != 0 && v * 2 + 1 < sumed.size())
-            {    //если есть что и куда проталкивать
-
-                //проталкиваем несогласованность
-                modifications[v * 2] = modifications[v * 2 + 1] = modifications[v];
-                modifications[v] = 0;
-
-                //и пересчитываем значения
-                int tm = (left + right) / 2;
-                sumed[v * 2] = (tm - left + 1) * modifications[v * 2];
-                sumed[v * 2 + 1] = (right - tm) * modifications[v * 2 + 1];
-            }
+            changes[currentIndex * 2] = changes[currentIndex * 2 + 1] = changes[currentIndex];
+            changes[currentIndex] = 0;
+            int tm = (leftQuery + rightQuery) / 2;
+            buildedTree[currentIndex * 2] = (tm - leftQuery + 1) * changes[currentIndex * 2];
+            buildedTree[currentIndex * 2 + 1] = (rightQuery - tm) * changes[currentIndex * 2 + 1];
         }
     }
+    void changeRange(int currentIndex,  int leftQueryBorder, int rightQueryBorder, T value)
+    {
+        //вариант 1
+         if (0 <= leftQueryBorder && rightQueryBorder <= buildedTree.size()-1) {
+//             buildedTree[currentIndex] = value * (rightQueryBorder - leftQueryBorder + 1);
+             buildedTree[currentIndex] = value;
+             changes[currentIndex] = value;   //сохраняем несогласованность
+             return;
+         }
+
+         //вариант 2
+         if (rightQueryBorder < 0 || buildedTree.size()-1 < leftQueryBorder) {
+             return;
+         }
+
+         //вариант 3
+         push(currentIndex, leftQueryBorder, rightQueryBorder);    //Проталкиваем модификации перед каждым разделением запроса!
+         int tm = (leftQueryBorder + rightQueryBorder) / 2;
+         changeRange(currentIndex * 2,     leftQueryBorder, tm, value);
+         changeRange(currentIndex * 2 + 1, tm + 1, rightQueryBorder, value);
+         buildedTree[currentIndex] = buildedTree[currentIndex * 2] + buildedTree[currentIndex * 2 + 1];
+    }
+    T print()
+    {
+        for(typename vector<T>::iterator it = buildedTree.begin(); it != buildedTree.end(); it++)
+            cout << *it << endl;
+        return 0;
+    }
+private:
+    vector<T> originalTree;
+    vector<T> buildedTree;
+    vector<T> changes;
 protected:
+    T convertToEmptyVector()
+    {
+        for (typename vector<T>::iterator it = buildedTree.begin(); it != buildedTree.end(); it++)
+            *it = 0;
+        return 0;
+    }
+    T convertToEmptyVectorByIndex()
+    {
+        for (int i = 0; i < originalTree.size()*3; ++i)
+            changes.push_back(0);
+        return 0;
+    }
 };
-
-void segmentTree::print()
-{
-    
-   for(vector<int>::iterator iter = segmentTree::array.begin(); iter != segmentTree::array.end(); ++iter)
-   {
-       std::cout << *iter << std::endl;
-   }
-}
-
-void segmentTree::printSum()
-{
-    for(vector<int>::iterator iter = sumed.begin(); iter != sumed.end(); ++iter)
-   {
-       std::cout << *iter << std::endl;
-   }
-}
 
 int main()
 {
-    vector<int> arr = {1,2,3,4,5,6};
-    segmentTree a(arr);
-//    a.print();
-    cout << endl;
-    a.printSum();
-    cout << endl;
-    vector<int> b = {4,3,29,54};
-//    a.change(0, 21, b);
-    cout << "Before change: " << endl;
-    a.printSum();
-    a.assign(254, 0, 0, 0);
-    cout << "After change: " << endl;
-    a.printSum();
+    vector<int> vec1 = {1,2,3,4,5};
+    segmentTree<int> a(vec1);
+    a.buildTree(0, 0, vec1.size());
+    a.print();
+    cout << "Sum = " << a.getSum(0, 1, 1) << endl;
+    cout << "Recount: " << endl;
+    a.setWithRecount(1, 3, 5, 4, 243);
+    a.print();
+    cout << "changeRange: " << endl;
+    a.changeRange(1, 3, 5, 68);
+    a.print();
 }
-
