@@ -8,9 +8,6 @@ using namespace std;
 
 class Fraction {
     private:
-        // Calculates the greates common divisor with
-        // Euclid's algorithm
-        // both arguments have to be positive
         long long gcd(long long a, long long b) {
             while (a != b) {
                 if (a > b) {
@@ -53,7 +50,10 @@ class Fraction {
                 denominator = d/tmp;
             }
         }
-
+        double convertToDouble()
+        {
+            return (double)numerator/denominator;
+        }
         operator int() {return (numerator)/denominator;}
         operator float() {return ((float)numerator)/denominator;}
         operator double() {return ((double)numerator)/denominator;}
@@ -133,9 +133,13 @@ class segmentTree
 {
 public:
     unsigned long length;
-    
     segmentTree(vector<T> vec)
     {
+        if((is_same<T, Fraction>::value))
+        {
+            cout << "You should use segmentFractionTree instead of segmentTree";
+            return;
+        }
         length = vec.size();
         originalTree = vec;
         buildedTree = vec;
@@ -143,7 +147,7 @@ public:
         convertToEmptyVectorByIndex();
     }
     
-    void buildTree(T currentIndex, T leftQueryBorder, T rightQueryBorder)
+    virtual void buildTree(T currentIndex, T leftQueryBorder, T rightQueryBorder)
     {
         if(leftQueryBorder == rightQueryBorder - 1)
         {
@@ -161,8 +165,9 @@ public:
 //            cout << buildedTree[currentIndex] << endl;
         }
     }
-    
-    void push(T currentIndex, T leftQuery, T rightQuery)
+
+
+    virtual void push(T currentIndex, T leftQuery, T rightQuery)
     {
         if(2 * currentIndex + 1 < changes.size() && changes[currentIndex] != 0)
         {
@@ -173,8 +178,8 @@ public:
             buildedTree[currentIndex * 2 + 1] = (rightQuery - tm) * changes[currentIndex * 2 + 1];
         }
     }
-    
-    T getSum(T currentIndex, T leftQueryBorder, T rightQueryBorder)
+
+    virtual T getSum(T currentIndex, T leftQueryBorder, T rightQueryBorder)
     {
         push(currentIndex, leftQueryBorder, rightQueryBorder);
         if((buildedTree.size()-1) <= leftQueryBorder || rightQueryBorder <= 0)
@@ -182,14 +187,14 @@ public:
         if(0 <= leftQueryBorder && rightQueryBorder <= buildedTree.size()-1)
             return buildedTree[currentIndex];
         T half = floor((leftQueryBorder + rightQueryBorder) / 2);
-        
+
         firstChild = getSum(2*currentIndex+1, leftQueryBorder, half);
         secondChild = getSum(2*currentIndex+2, half, rightQueryBorder);
-        
+
         return firstChild + secondChild;
     }
-    
-    T findValue(T currentIndex, T leftQueryBorder, T rightQueryBorder)
+
+    virtual T findValue(T currentIndex, T leftQueryBorder, T rightQueryBorder)
     {
         if(leftQueryBorder < 0 || rightQueryBorder > buildedTree.size()-1)
         {
@@ -206,8 +211,8 @@ public:
         secondChild += findValue(2*currentIndex+2, half, rightQueryBorder);
         return sum += firstChild + secondChild;
     }
-    
-    void setWithRecount(T currentIndex, T leftQueryBorder, T rightQueryBorder, T indexOfElementToChange, T value)
+
+    virtual void setWithRecount(T currentIndex, T leftQueryBorder, T rightQueryBorder, T indexOfElementToChange, T value)
     {
         if(leftQueryBorder == rightQueryBorder - 1)
         {
@@ -220,10 +225,9 @@ public:
         else setWithRecount(2*currentIndex+2, half, rightQueryBorder, indexOfElementToChange, value);
         buildedTree[currentIndex] = buildedTree[2*currentIndex+2] + buildedTree[2*currentIndex+1];
     }
-    
-    void changeRange(T currentIndex,  T leftQueryBorder, T rightQueryBorder, T value)
+
+    virtual void changeRange(T currentIndex,  T leftQueryBorder, T rightQueryBorder, T value)
     {
-        //вариант 1
          if (0 <= leftQueryBorder && rightQueryBorder <= buildedTree.size()-1) {
 //             buildedTree[currentIndex] = value * (rightQueryBorder - leftQueryBorder + 1);
              buildedTree[currentIndex] = value;
@@ -231,26 +235,23 @@ public:
              return;
          }
 
-         //вариант 2
          if (rightQueryBorder < 0 || buildedTree.size()-1 < leftQueryBorder) {
              return;
          }
-
-         //вариант 3
-         push(currentIndex, leftQueryBorder, rightQueryBorder);    //Проталкиваем модификации перед каждым разделением запроса!
+        
+         push(currentIndex, leftQueryBorder, rightQueryBorder);
          T tm = floor((leftQueryBorder + rightQueryBorder) / 2);
          changeRange(currentIndex * 2,     leftQueryBorder, tm, value);
          changeRange(currentIndex * 2 + 1, tm + 1, rightQueryBorder, value);
          buildedTree[currentIndex] = buildedTree[currentIndex * 2] + buildedTree[currentIndex * 2 + 1];
     }
-    
-    T print()
+
+    void print()
     {
         for(typename vector<T>::iterator it = buildedTree.begin(); it != buildedTree.end(); it++)
             cout << *it << endl;
-        return 0;
     }
-    
+
 private:
     vector<T> originalTree;
     vector<T> buildedTree;
@@ -259,14 +260,14 @@ private:
     T secondChild = 0;
     T sum = 0;
 protected:
-    
+
     T convertToEmptyVector()
     {
         for (typename vector<T>::iterator it = buildedTree.begin(); it != buildedTree.end(); it++)
             *it = 0;
         return 0;
     }
-    
+
     T convertToEmptyVectorByIndex()
     { //((std::is_same<T, int>::value) ? 11 : 10)
         for (long i = 0; i < originalTree.size()*8; ++i)
@@ -275,80 +276,167 @@ protected:
     }
 };
 
+template<typename T>
+class segmentFractionTree : public Fraction
+{
+public:
+    int length;
+    segmentFractionTree(vector<Fraction> a)
+    {
+        if(!(is_same<T, Fraction>::value))
+        {
+            cout << endl << "You should use segmentTree instead of segmentFractionTree" << endl;
+            return;
+        }
+        length = a.size();
+        originalTree = a;
+        convertIntoDouble(a, buildedTree);
+        convertToEmptyVector();
+        convertToEmptyVectorByIndex();
+    }
+    virtual void buildTree(int currentIndex, int leftQueryBorder, int rightQueryBorder)
+    {
+        if(leftQueryBorder == rightQueryBorder - 1)
+        {
+            if(leftQueryBorder < rightQueryBorder)
+                buildedTree[currentIndex] = originalTree[leftQueryBorder].convertToDouble();
+            return;
+        }
+        else
+        {
+            int half = floor((rightQueryBorder + leftQueryBorder) / 2);
+            buildTree(2 * currentIndex + 1, leftQueryBorder, half);
+            buildTree(2 * currentIndex + 2, half, rightQueryBorder);
+            buildedTree[currentIndex] = buildedTree[2 * currentIndex + 1] + buildedTree[2 * currentIndex + 2];
+        }
+    }
+    
+    void print()
+    {
+        for(typename vector<double>::iterator it = buildedTree.begin(); it != buildedTree.end(); it++)
+            cout << *it << endl;
+    }
+
+private:
+    vector<Fraction> originalTree;
+    vector<double> buildedTree;
+    vector<double> changes;
+    vector<Fraction> fractionTree;
+protected:
+    void convertToEmptyVector()
+    {
+        for (typename vector<double>::iterator it = buildedTree.begin(); it != buildedTree.end(); it++)
+            *it = Fraction(0,1);
+    }
+
+    void convertToEmptyVectorByIndex()
+    {
+        for (long i = 0; i < originalTree.size()*18; ++i)
+            changes.push_back(0);
+    }
+    void convertIntoDouble(vector<Fraction>& a, vector<double>& b)
+    {
+        for (int i = 0; i < a.size(); i++)
+        {
+            b.push_back(a[i]);
+        }
+    }
+};
+
 int main()
 {
-    cout << endl << "------------ INTEGER ------------" << endl << endl;
-    vector<int> vec1 = {1,2,3,4,5};
-    segmentTree<int> a(vec1);
-    a.buildTree(0, 0, vec1.size());
-    a.print();
-    cout << "Sum = " << a.getSum(0, 1, 1) << endl;
-    cout << "Recount: " << endl;
-    a.setWithRecount(1, 3, 5, 4, 243);
-    a.print();
-    cout << endl << "changeRange: " << endl;
-    a.changeRange(1, 3, 3, 68);
-    a.print();
-    cout << endl << "SumFindValue = " << a.findValue(0, 2, 4) << endl << endl;
-    cout << endl << "Recount integer 2: " << endl;
-    a.setWithRecount(1, 3, 5, 3, 243.66);
-    a.print();
+//    cout << endl << "------------ INTEGER ------------" << endl << endl;
+//    vector<int> vec1 = {1,2,3,4,5};
+//    segmentTree<int> a(vec1);
+//    a.buildTree(0, 0, vec1.size());
+//    a.print();
+//    cout << "Sum = " << a.getSum(0, 1, 1) << endl;
+//    cout << "Recount: " << endl;
+//    a.setWithRecount(1, 3, 5, 4, 243);
+//    a.print();
+//    cout << endl << "changeRange: " << endl;
+//    a.changeRange(1, 3, 3, 68);
+//    a.print();
+//    cout << endl << "SumFindValue = " << a.findValue(0, 2, 4) << endl << endl;
+//    cout << endl << "Recount integer 2: " << endl;
+//    a.setWithRecount(1, 3, 5, 3, 243.66);
+//    a.print();
+//
+//    // double
+//    cout << endl << "------------ DOUBLE ------------" << endl << endl;
+//
+//    vector<double> vec2 = {1.3, 2.4, 3.99, 42.1, 5.8};
+//    segmentTree<double> b(vec2);
+//    b.buildTree(0, 0, vec2.size());
+//    b.print();
+//    cout << "Sum double = " << b.getSum(0, 3, 4) << endl;
+//    cout << "Recount double: " << endl;
+//    b.setWithRecount(1, 3, 5, 3, 243.66);
+//    b.print();
+//    cout << "changeRange double: " << endl;
+//    b.changeRange(1, 3, 3, 68);
+//    b.print();
+//    cout << endl << "Recount double 2: " << endl;
+//    b.setWithRecount(1, 3, 5, 3, 243.66);
+//    b.print();
+//
+//    cout << endl << "------------ float ------------" << endl << endl;
+//
+//    vector<float> vec3 = {1.331, 2.45, 3.991312, 42.1312, 5.8313};
+//    segmentTree<float> c(vec3);
+//    c.buildTree(0, 0, vec3.size());
+//    c.print();
+//    cout << "Sum double = " << c.getSum(0, 3, 4) << endl;
+//    cout << "Recount double: " << endl;
+//    c.setWithRecount(1, 3, 5, 3, 87613213);
+//    c.print();
+//    cout << "changeRange double: " << endl;
+//    c.changeRange(1, 3, 3, 68);
+//    c.print();
+//    cout << endl << "Recount double 2: " << endl;
+//    c.setWithRecount(1, 3, 5, 3, 243.66);
+//    c.print();
     
-    // double
-    cout << endl << "------------ DOUBLE ------------" << endl << endl;
-    
-    vector<double> vec2 = {1.3, 2.4, 3.99, 42.1, 5.8};
-    segmentTree<double> b(vec2);
-    b.buildTree(0, 0, vec2.size());
-    b.print();
-    cout << "Sum double = " << b.getSum(0, 3, 4) << endl;
+    cout << endl << "------------ Fractions(double) ------------" << endl << endl;
+    vector<double> vec4 = {};
+    for(int i = 0; i < 5; i++)
+    {
+        vec4.push_back(Fraction(i+1, i+3).convertToDouble());
+    }
+    segmentTree<double> d(vec4);
+    d.buildTree(0, 0, vec4.size());
+    d.print();
+    cout << "Sum double = " << d.getSum(0, 3, 4) << endl;
     cout << "Recount double: " << endl;
-    b.setWithRecount(1, 3, 5, 3, 243.66);
-    b.print();
+    d.setWithRecount(1, 3, 5, 3, 87613213);
+    d.print();
     cout << "changeRange double: " << endl;
-    b.changeRange(1, 3, 3, 68);
-    b.print();
-    cout << endl << "Recount double 2: " << endl;
-    b.setWithRecount(1, 3, 5, 3, 243.66);
-    b.print();
-    
-    cout << endl << "------------ float ------------" << endl << endl;
-    
-    vector<float> vec3 = {1.331, 2.45, 3.991312, 42.1312, 5.8313};
-    segmentTree<float> c(vec3);
-    c.buildTree(0, 0, vec3.size());
-    c.print();
-    cout << "Sum double = " << c.getSum(0, 3, 4) << endl;
-    cout << "Recount double: " << endl;
-    c.setWithRecount(1, 3, 5, 3, 87613213);
-    c.print();
-    cout << "changeRange double: " << endl;
-    c.changeRange(1, 3, 3, 68);
-    c.print();
-    cout << endl << "Recount double 2: " << endl;
-    c.setWithRecount(1, 3, 5, 3, 243.66);
-    c.print();
+    d.changeRange(1, 3, 3, 68);
+    d.print();
+    cout << endl << "Recount double 3: " << endl;
+    d.setWithRecount(1, 3, 5, 3, 243.66);
+    d.print();
     
     cout << endl << "------------ Fractions ------------" << endl << endl;
-    
-//    vector<Fraction> vec4 = {};
-//    for(int i = 0; i < 5; i++)
-//    {
-//        vec4.push_back(Fraction (i+1, i+3));
-//    }
-//    segmentTree<Fraction> d(vec4);
-//    d.buildTree(0, 0, vec3.size());
-//    d.print();
-//    cout << "Sum double = " << d.getSum(0, 3, 4) << endl;
+    vector<Fraction> vec5;
+    for(int i = 0; i < 5; i++)
+    {
+        vec5.push_back(Fraction(i+1, i+3));
+    }
+
+    segmentFractionTree<Fraction> e(vec5);
+    e.buildTree(0, 0, vec5.size());
+    e.print();
+//    cout << "Sum double = " << e.getSum(0, 3, 4) << endl;
 //    cout << "Recount double: " << endl;
-//    d.setWithRecount(1, 3, 5, 3, 87613213);
-//    d.print();
+//    e.setWithRecount(1, 3, 5, 3, 87613213);
+//    e.print();
 //    cout << "changeRange double: " << endl;
-//    d.changeRange(1, 3, 3, 68);
-//    d.print();
-//    cout << endl << "Recount double 2: " << endl;
-//    d.setWithRecount(1, 3, 5, 3, 243.66);
-//    d.print();
+//    e.changeRange(1, 3, 3, 68);
+//    e.print();
+//    cout << endl << "Recount double 3: " << endl;
+//    e.setWithRecount(1, 3, 5, 3, 243.66);
+//    e.print();
     
 //    cout << endl << "------------ __int64 ------------" << endl << endl;
 //
@@ -366,5 +454,5 @@ int main()
 //    cout << endl << "Recount double 2: " << endl;
 //    d.setWithRecount(1, 3, 5, 3, 243.66);
 //    d.print();
-    return 0;
+//    return 0;
 }
